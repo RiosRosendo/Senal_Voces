@@ -17,8 +17,9 @@ FRAME_LEN    = 320     # muestras (~20 ms)
 HOP          = 128     # muestras (~8 ms)
 LPC_ORDER    = 12
 ALPHA        = 0.95    # coeficiente de preénfasis
-PALABRAS     = ["start", "stop", "left", "right", "forward",
-                "backward", "lift", "leave", "break", "continue"]
+PALABRAS     = ["one", "two", "racks", "rollers", "map",
+                "stop", "forward", "left", "right", "continue"]
+PERSONAS     = ["rosendo", "jordan", "hugo", "juanjo", "victor"]
 N_TRAIN      = 10      # grabaciones para entrenamiento por palabra
 N_TEST       = 5       # grabaciones para evaluación
 CODEBOOK_SIZES = [16, 32, 64]
@@ -92,8 +93,8 @@ def detect_endpoints(signal, frame_len=FRAME_LEN, hop=HOP):
     start_sample = first_frame * hop
     end_sample   = min(last_frame * hop + frame_len, n)
 
-    # garantizar duración mínima de 0.3 s (4800 muestras)
-    MIN_SAMPLES = int(0.3 * FS)
+    # garantizar duración mínima de 0.1 s (1600 muestras)
+    MIN_SAMPLES = int(0.1 * FS)
     if end_sample - start_sample < MIN_SAMPLES:
         return 0, n
 

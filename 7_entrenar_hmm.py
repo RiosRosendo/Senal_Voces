@@ -26,14 +26,12 @@ import os
 import argparse
 import numpy as np
 
-from utils import PALABRAS, N_TRAIN
+from utils import PALABRAS, PERSONAS, N_TRAIN
 from hmm_utils import HMMBakis
 
 SEQ_DIR   = os.path.join('models', 'mfcc_sequences')
 HMM_DIR   = os.path.join('models', 'hmm_models')
 N_SYMBOLS = 256
-PERSONAS  = ['rosendo', 'jordan', 'hugo', 'juanjo', 'victor']
-N_TRAIN   = 10
 
 os.makedirs(HMM_DIR, exist_ok=True)
 

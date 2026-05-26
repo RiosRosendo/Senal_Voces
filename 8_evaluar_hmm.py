@@ -28,14 +28,11 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-from utils import PALABRAS, N_TRAIN, N_TEST
+from utils import PALABRAS, PERSONAS, N_TRAIN, N_TEST
 from hmm_utils import HMMBakis
 
 SEQ_DIR   = os.path.join('models', 'mfcc_sequences')
 HMM_DIR   = os.path.join('models', 'hmm_models')
-PERSONAS  = ['rosendo', 'jordan', 'hugo', 'juanjo', 'victor']
-N_TRAIN   = 10
-N_TEST    = 5
 
 print("=" * 60)
 print("PASO 8: Evaluación HMM+MFCC — matriz de confusión")

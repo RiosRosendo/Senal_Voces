@@ -31,7 +31,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from sklearn.cluster import MiniBatchKMeans
 
-from utils import PALABRAS, detect_endpoints, FS
+from utils import PALABRAS, PERSONAS, detect_endpoints, FS, N_TRAIN, N_TEST
 from hmm_utils import extract_mfcc, quantize
 
 # ── Configuración ─────────────────────────────────────────────────
@@ -40,9 +40,6 @@ MODELS_DIR = 'models'
 SEQ_DIR    = os.path.join(MODELS_DIR, 'mfcc_sequences')
 N_MFCC     = 13
 VQ_K       = 256
-PERSONAS   = ['rosendo', 'jordan', 'hugo', 'juanjo', 'victor']
-N_TRAIN    = 10
-N_TEST     = 5
 
 os.makedirs(SEQ_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
