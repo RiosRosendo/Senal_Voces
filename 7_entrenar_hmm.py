@@ -23,6 +23,7 @@ Uso:
 """
 
 import os
+import glob
 import argparse
 import numpy as np
 
@@ -49,9 +50,16 @@ for palabra in PALABRAS:
     sequences = []
     for persona in PERSONAS:
         for i in range(1, N_TRAIN + 1):
+            # Original
             path = os.path.join(SEQ_DIR, f'{persona}_{palabra}_{i:02d}.npy')
             if os.path.isfile(path):
                 seq = np.load(path).astype(np.int32)
+                if len(seq) >= N_STATES:
+                    sequences.append(seq)
+            # Augmentadas (todas las variantes _a*.npy que existan)
+            pattern = os.path.join(SEQ_DIR, f'{persona}_{palabra}_{i:02d}_a*.npy')
+            for aug_path in sorted(glob.glob(pattern)):
+                seq = np.load(aug_path).astype(np.int32)
                 if len(seq) >= N_STATES:
                     sequences.append(seq)
 

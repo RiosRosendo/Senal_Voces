@@ -44,16 +44,41 @@ VQ_K       = 256
 os.makedirs(SEQ_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 
+
+# ── Data augmentation (solo para entrenamiento) ───────────────────
+def aug_speed(signal, factor):
+    """factor < 1: más rápido, factor > 1: más lento."""
+    n_out = max(1, int(len(signal) * factor))
+    idx = np.linspace(0, len(signal) - 1, n_out)
+    return np.interp(idx, np.arange(len(signal)), signal).astype(np.float32)
+
+
+def aug_noise(signal, snr_db=15):
+    """Añade ruido gaussiano blanco a SNR fijo."""
+    rng = np.random.default_rng(seed=0)
+    power = np.mean(signal ** 2) + 1e-10
+    noise_power = power / (10 ** (snr_db / 10))
+    noise = rng.normal(0, np.sqrt(noise_power), len(signal)).astype(np.float32)
+    return np.clip(signal + noise, -1.0, 1.0)
+
+
+AUG_VARIANTS = [
+    ('a1', lambda s: aug_speed(s, 0.85)),   # más rápido
+    ('a2', lambda s: aug_speed(s, 1.15)),   # más lento
+    ('a3', lambda s: aug_noise(s, 15)),     # ruido de salón
+]
+
 print("=" * 60)
-print("PASO 6: Extracción MFCC + VQ global (K=256)")
+print("PASO 6: Extracción MFCC + VQ global (K=256) con augmentation")
 print("=" * 60)
 
 # ─────────────────────────────────────────────────────────────────
-# 1. Extraer MFCC de todas las grabaciones
+# 1. Extraer MFCC de todas las grabaciones + augmentation en train
 # ─────────────────────────────────────────────────────────────────
 all_train_mfcc = []
 seq_cache: dict = {}          # (persona, palabra, i) → array MFCC
 mfcc_por_palabra: dict = {}   # palabra → lista de arrays MFCC (para visualizar)
+n_aug_saved = 0
 
 for persona in PERSONAS:
     for palabra in PALABRAS:
@@ -80,9 +105,20 @@ for persona in PERSONAS:
                 all_train_mfcc.append(mfcc)
                 mfcc_por_palabra.setdefault(palabra, []).append(mfcc)
 
+                # Generar variantes augmentadas
+                for tag, fn in AUG_VARIANTS:
+                    aug_seg = fn(segment)
+                    aug_mfcc = extract_mfcc(aug_seg, fs=FS, n_mfcc=N_MFCC)
+                    if len(aug_mfcc) >= 5:
+                        all_train_mfcc.append(aug_mfcc)
+                        seq_cache[(persona, palabra, f'{i:02d}_{tag}')] = aug_mfcc
+                        n_aug_saved += 1
+
 n_total  = len(PERSONAS) * len(PALABRAS) * (N_TRAIN + N_TEST)
-n_frames = sum(len(m) for m in all_train_mfcc)
-print(f"Grabaciones procesadas : {len(seq_cache)} / {n_total}")
+n_orig   = sum(len(m) for m in all_train_mfcc)
+print(f"Grabaciones originales : {len(seq_cache) - n_aug_saved} / {n_total}")
+print(f"Variantes augmentadas  : {n_aug_saved}  ({len(AUG_VARIANTS)} por muestra de train)")
+n_frames = n_orig
 print(f"Frames de entrenamiento: {n_frames}")
 
 # ─────────────────────────────────────────────────────────────────
@@ -109,16 +145,22 @@ print(f"  Codebook guardado: {vq_path}")
 print("\nCuantizando secuencias ...")
 symbol_counts = np.zeros(VQ_K, dtype=int)
 
-for (persona, palabra, i), mfcc in seq_cache.items():
+for key, mfcc in seq_cache.items():
+    persona, palabra, i = key
     indices = quantize(mfcc, centroids)
-    out_path = os.path.join(SEQ_DIR, f'{persona}_{palabra}_{i:02d}.npy')
+    # i puede ser int (original) o str como '01_a1' (augmentada)
+    if isinstance(i, int):
+        fname = f'{persona}_{palabra}_{i:02d}.npy'
+    else:
+        fname = f'{persona}_{palabra}_{i}.npy'
+    out_path = os.path.join(SEQ_DIR, fname)
     np.save(out_path, indices.astype(np.uint8))
     symbol_counts += np.bincount(indices, minlength=VQ_K)
 
 print(f"  Secuencias guardadas en: {SEQ_DIR}/")
 
-# Mostrar ejemplo de secuencia
-primera_key = next(iter(seq_cache))
+# Mostrar ejemplo de secuencia (usar la primera original)
+primera_key = next(k for k in seq_cache if isinstance(k[2], int))
 ex_indices = quantize(seq_cache[primera_key], centroids)
 persona_ej, palabra_ej, _ = primera_key
 print(f"\nEjemplo ({persona_ej} / {palabra_ej}):")
@@ -190,8 +232,9 @@ print("Figura 4 guardada: resultados/codebook_distribucion.png")
 
 print("\n" + "=" * 60)
 print("✓ Paso 6 completado.")
-print(f"  Grabaciones procesadas : {len(seq_cache)}")
-print(f"  Frames totales         : {n_frames}")
+print(f"  Secuencias originales  : {len(seq_cache) - n_aug_saved}")
+print(f"  Secuencias augmentadas : {n_aug_saved}")
+print(f"  Frames VQ train total  : {n_frames}")
 print(f"  Codebook               : {VQ_K} símbolos × {N_MFCC} dim")
 print("  Siguiente: python3 7_entrenar_hmm.py")
 print("=" * 60)
